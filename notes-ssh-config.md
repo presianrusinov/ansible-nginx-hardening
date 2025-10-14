@@ -62,6 +62,9 @@ In VirtualBox setups, NAT + Host-only can cause confusion in connectivity tests
 Documenting every issue saves hours of troubleshooting
 
 🧾 References
-Red Hat SSH Key Authentication Guide
+How to configure key-based authentication for SSH:
+https://www.redhat.com/en/blog/key-based-authentication-ssh
 
-Ansible Best Practices: Privilege Escalation
+Ansible Best Practices- Privilege Escalation :
+https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_privilege_escalation.html
+
