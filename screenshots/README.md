@@ -1,7 +1,7 @@
  📸 Screenshots
 
 Playbook Run
-![Ansible Playbook Success](screenshots/ansible-playbook-success.png)
+![Ansible Playbook Success](ansible-playbook-success.png)
 
 Nginx Test
-![Nginx Curl Result](screenshots/curl-nginx.png)
+![Nginx Curl Result](curl-nginx.png)
