@@ -1,7 +1,8 @@
 ---
-- name: Nginx Hardening Playbook
+- name: Apply Nginx hardening
   hosts: target
-  become: true
+  become: yes
+
   roles:
     - nginx_hardening
 

@@ -1,0 +1,83 @@
+---
+# roles/nginx_hardening/tasks/harden.yml
+
+- name: Disable server_tokens
+  ansible.builtin.lineinfile:
+    path: /etc/nginx/nginx.conf
+    regexp: '^\s*server_tokens'
+    line: '    server_tokens off;'
+    insertafter: 'http {'
+  notify: restart nginx
+
+- name: Set correct ownership for Nginx directories
+  ansible.builtin.file:
+    path: /etc/nginx
+    owner: root
+    group: root
+    recurse: yes
+
+- name: Secure nginx.conf permissions
+  ansible.builtin.file:
+    path: /etc/nginx/nginx.conf
+    mode: '0640'
+
+- name: Secure website root directory
+  ansible.builtin.file:
+    path: /var/www/html
+    owner: nginx
+    group: nginx
+    mode: '0755'
+    recurse: yes
+
+- name: Create SSL directory
+  ansible.builtin.file:
+    path: /etc/nginx/ssl
+    state: directory
+    owner: root
+    group: root
+    mode: '0700'
+
+- name: Generate self-signed SSL certificate
+  ansible.builtin.command:
+    cmd: >
+      openssl req -x509 -nodes -days 365
+      -subj "/CN=localhost"
+      -newkey rsa:2048
+      -keyout /etc/nginx/ssl/selfsigned.key
+      -out /etc/nginx/ssl/selfsigned.crt
+  args:
+    creates: /etc/nginx/ssl/selfsigned.crt
+
+- name: Ensure default site configuration file exists
+  ansible.builtin.copy:
+    dest: /etc/nginx/conf.d/default.conf
+    content: |
+      server {
+          listen 80;
+          server_name localhost;
+          root /var/www/html;
+          index index.html;
+      }
+    owner: root
+    group: root
+    mode: '0644'
+    force: no
+
+- name: Configure SSL in default site
+  ansible.builtin.blockinfile:
+    path: /etc/nginx/conf.d/default.conf
+    block: |
+      server {
+          listen 443 ssl;
+          server_name localhost;
+
+          ssl_certificate /etc/nginx/ssl/selfsigned.crt;
+          ssl_certificate_key /etc/nginx/ssl/selfsigned.key;
+          ssl_protocols TLSv1.2 TLSv1.3;
+          ssl_ciphers 'HIGH:!aNULL:!MD5';
+
+          root /var/www/html;
+          index index.html;
+      }
+  notify: restart nginx
+
