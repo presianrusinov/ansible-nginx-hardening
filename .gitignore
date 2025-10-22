@@ -1,6 +1,9 @@
-# Terraform local state and cache
+# Terraform cache and state
 .terraform/
 *.tfstate
 *.tfstate.backup
 .terraform.lock.hcl
 
+# Ansible cache
+*.retry
+__pycache__/
