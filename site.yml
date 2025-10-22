@@ -1,6 +1,6 @@
 ---
 - name: Apply Nginx hardening
-  hosts: target
+  hosts: [aws_nginx]
   become: yes
 
   roles:
