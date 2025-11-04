@@ -7,3 +7,16 @@
 # Ansible cache
 *.retry
 __pycache__/
+
+# Terraform
+*.tfstate
+*.tfstate.backup
+.terraform/
+terraform.tfvars
+crash.log
+
+# Vim / temp
+*.swp
+*.swo
+*.log
+.DS_Store
