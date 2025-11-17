@@ -1,4 +1,4 @@
-  DevOps Project — Ansible + Terraform + AWS + Nginx Hardening
+DevOps Project — Ansible + Terraform + AWS + Nginx Hardening
 
 This project demonstrates a complete Infrastructure as Code (IaC) workflow using Terraform, Ansible, and AWS.  
 It automatically provisions an EC2 instance (Amazon Linux 2023), secures it with Nginx hardening, and deploys an HTML page served over HTTP and HTTPS.
@@ -133,6 +133,19 @@ DevOps | Linux | Terraform | Ansible | AWS
  presianrusinov@gmail.com
 
  GitHub Repo : https://github.com/presianrusinov/ansible-nginx-hardening
+
+
+ NOTE: Clarification on the use of ports and certificates
+
+Port 80 is intentionally left open even though the service is also available over HTTPS on port 443. This is not a security weakness. Port 80 is required for the normal operation of the web server,
+because it handles the automatic redirection from HTTP to HTTPS. Many clients and tools make their initial request over HTTP and expect to be redirected to a secure connection. Closing port 80 would 
+result in unexpected behavior, failed requests, and in some cases complete loss of access.
+
+Port 80 is also necessary for certificate validation mechanisms (such as ACME/Let’s Encrypt). The process of issuing or renewing certificates relies on HTTP access to verify domain ownership. If this port is closed, certificates cannot be issued or updated.
+
+The “Not secure” message in the browser is expected when a self-signed certificate is used. This warning does not indicate a misconfiguration or an insecure setup; it simply means that the certificate was not issued by a publicly trusted authority. A real public certificate can be added if needed, but for demonstration, testing, or internal development, a self-signed certificate is completely acceptable.
+
+These decisions follow standard practices for EC2-based web deployments and help ensure stable behavior, accessibility, and predictable operation of the service.
 
 Keep consistent IP addressing in VirtualBox setups
 
