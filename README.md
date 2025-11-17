@@ -1,29 +1,29 @@
- 🧠 AI + DevOps Project — Ansible + Terraform + AWS + Nginx Hardening
+  DevOps Project — Ansible + Terraform + AWS + Nginx Hardening
 
 This project demonstrates a complete Infrastructure as Code (IaC) workflow using Terraform, Ansible, and AWS.  
 It automatically provisions an EC2 instance (Amazon Linux 2023), secures it with Nginx hardening, and deploys an HTML page served over HTTP and HTTPS.
 
 ---
 
- 🌐 Live Demo
-🔗 Public URL: [http://3.76.197.253](http://3.76.197.253)
+  Live Demo
+ Public URL: [http://63.177.86.189](http://63.177.86.189) 
 
-(Hosted on Amazon EC2, deployed automatically via Terraform + Ansible.)
+(Hosted on AWS EC2, deployed automatically via Terraform + Ansible.)
 
 ---
 
-🚀 Project Overview
+ Project Overview
 
 Stack used:
-- ☁️ AWS EC2 (t2.micro, Free Tier)
-- ⚙️ Terraform** — creates infrastructure
-- 🧰 Ansible — configures and hardens Nginx
-- 🔒 Security — SELinux, SSL, Permissions, `server_tokens off`
-- 🤖 Next phase: AI-generated “About Me” HTML page
+-  AWS EC2 (t2.micro, Free Tier)
+-  Terraform — creates infrastructure
+-  Ansible — configures and hardens Nginx
+-  Security — SELinux, SSL, Permissions, `server_tokens off` - to be done and improved
+-  Next phase: AI-generated “About Me” HTML page
 
----
 
-🧩 Project Structure
+
+ Project Structure
 
 
 
@@ -48,11 +48,11 @@ ansible-nginx-hardening/
 └── ansible-provision.sh
 
 
----
 
- ⚙️ Deployment Workflow
 
- 1️⃣ Terraform Phase — Provision AWS Infrastructure
+  Deployment Workflow
+
+  Terraform Phase — Provision AWS Infrastructure
 
 
 cd terraform
@@ -74,14 +74,14 @@ Output with the public IP
 Example:
 
 Outputs:
-ec2_public_ip = "3.76.197.253"
+ec2_public_ip = "63.177.86.189"
 
-2️⃣ Ansible Phase — Configure and Harden Nginx
+ Ansible Phase — Configure and Harden Nginx
 
 Edit inventory/hosts:
 
 [aws_nginx]
-3.76.197.253 ansible_user=ec2-user ansible_ssh_private_key_file=~/.ssh/aws_key
+63.177.86.189 ansible_user=ec2-user ansible_ssh_private_key_file=~/.ssh/aws_key
 
 
 Run:
@@ -98,41 +98,41 @@ Apply hardening (SSL, permissions, SELinux)
 
 Deploy an example HTML page
 
-🖥️ Verification
+ Verification
 
 Access:
-👉 http://3.76.197.253
+http://63.177.86.189
 
 You should see:
 
 Nginx is running on AWS EC2 (Amazon Linux 2023)
 This page is automatically deployed via Ansible + Terraform.
 
-📸 Screenshots
+ Screenshots
 Description	Image
-✅ Terraform Apply Success	
+ Terraform Apply Success	
 
-✅ Ansible Playbook Success	
+ Ansible Playbook Success	
 
-🌐 Working Nginx Page	
-🔒 Security Hardening Summary
+ Working Nginx Page	
+ Security Hardening Summary
 Category	Action
 Server Tokens	Disabled
 File Permissions	0644 / 0755 enforced
 SELinux Context	httpd_sys_content_t
 SSL	Self-signed certificate
 Root Path	/usr/share/nginx/html
-💡 Next Phase (AI HTML “About Me” Page)
+ Next Phase (AI HTML “About Me” Page)
 
 Next, the default landing page will be replaced with an AI-generated HTML “About Me” — a personalized web profile automatically deployed via Ansible.
 
-👨‍💻 Author
+ Author
 
 Presian Rusinov
 DevOps | Linux | Terraform | Ansible | AWS
-📧 presianrusinov@gmail.com
+ presianrusinov@gmail.com
 
-🌍 GitHub Repo : https://github.com/presianrusinov/ansible-nginx-hardening
+ GitHub Repo : https://github.com/presianrusinov/ansible-nginx-hardening
 
 Keep consistent IP addressing in VirtualBox setups
 
