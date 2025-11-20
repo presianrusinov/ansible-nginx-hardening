@@ -1,0 +1,27 @@
+# Terraform state & variables
+terraform.tfstate
+terraform.tfstate.backup
+terraform.tfvars
+*.tfvars
+.terraform/
+.terraform.lock.hcl
+
+# Ansible
+*.retry
+.cache/
+.fact_cache/
+
+# Editors
+*.swp
+*.swo
+*.swm
+*.swx
+.DS_Store
+Thumbs.db
+
+# Python backend
+__pycache__/
+*.py[cod]
+venv/
+.env
+
