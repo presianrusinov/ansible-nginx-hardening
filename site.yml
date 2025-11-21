@@ -6,4 +6,5 @@
   roles:
     - nginx_hardening
     - frontend
+    - backend
 

@@ -1,0 +1,13 @@
+[Unit]
+Description=AI Backend Flask Service
+After=network.target
+
+[Service]
+User=ec2-user
+WorkingDirectory=/var/www/ai_project
+ExecStart=/usr/bin/python3 app.py
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+
