@@ -1,155 +1,53 @@
-DevOps Project — Ansible + Terraform + AWS + Nginx Hardening
+DevOps Project: Terraform, Ansible, AWS EC2 and Nginx
 
-This project demonstrates a complete Infrastructure as Code (IaC) workflow using Terraform, Ansible, and AWS.  
-It automatically provisions an EC2 instance (Amazon Linux 2023), secures it with Nginx hardening, and deploys an HTML page served over HTTP and HTTPS.
+This project demonstrates a complete end-to-end workflow for deploying an application in the cloud using Infrastructure as Code. The environment is built on AWS EC2 (Amazon Linux 2023) and is fully configured through Terraform and Ansible. On top of the basic Nginx deployment, the project now includes a lightweight AI-style text analysis service written in Python (Flask), along with a custom frontend interface.
 
----
+The project was created with the goal of practicing a realistic DevOps deployment pipeline: provisioning, configuration management, service automation, and application delivery.
 
-  Live Demo
- Public URL: [http://63.177.86.189](http://63.177.86.189) 
+Application Overview
 
-(Hosted on AWS EC2, deployed automatically via Terraform + Ansible.)
+The application consists of two parts: a static frontend served by Nginx and a small backend service running on Flask. The backend performs simple text analysis (summary, sentiment, keywords) and stores results in a SQLite database. Everything is deployed on a single EC2 instance.
+The frontend communicates with the backend through a thin API layer, and both components are provisioned and configured automatically through Ansible.
 
----
+Infrastructure Workflow
 
- Project Overview
+Terraform creates the full AWS environment:
+VPC, subnet, route table, internet gateway, security group and the EC2 instance. After the instance is online, its public IP address is used for the Ansible inventory.
 
-Stack used:
--  AWS EC2 (t2.micro, Free Tier)
--  Terraform — creates infrastructure
--  Ansible — configures and hardens Nginx
--  Security — SELinux, SSL, Permissions, `server_tokens off` - to be done and improved
--  Next phase: AI-generated “About Me” HTML page
+Ansible then connects to the instance and performs the required setup steps:
+installation and configuration of Nginx, deployment of the frontend files, installation of Python packages, configuration of the Flask backend service and creation of a systemd unit that runs the backend automatically.
 
+Once the playbook finishes, both the frontend and backend become available immediately.
 
+Project Layout
 
- Project Structure
+The repository contains two main sections: one for Terraform and one for Ansible. The Terraform folder includes the EC2 setup, networking and outputs. The Ansible folder contains the roles for the frontend and backend, the site playbook and the inventory.
 
+The backend files (Python scripts, schema and requirements) are placed inside the backend role, which copies them to the server and configures the service. The frontend role keeps the static HTML, CSS and JavaScript files which get deployed to the Nginx root directory.
 
+Security Notes
 
-ansible-nginx-hardening/
-├── ansible.cfg
-├── inventory/
-│ └── hosts
-├── roles/
-│ └── nginx_hardening/
-│ ├── tasks/harden.yml
-│ ├── handlers/main.yml
-│ ├── defaults/
-│ ├── vars/
-│ └── templates/
-├── site.yml
-└── terraform/
-├── main.tf
-├── variables.tf
-├── outputs.tf
-├── provider.tf
-├── terraform.tfvars
-└── ansible-provision.sh
+The current security configuration is kept intentionally simple so the project can remain easy to understand and reproduce on any new instance.
+Port 80 is open publicly and allows direct HTTP access. This is not ideal for production but is acceptable for a small experimental project where ease of access is more important than strict hardening. The service does not process anything sensitive, and the demonstrational nature of the project makes strict HTTPS enforcement unnecessary at this stage.
 
+The backend API listens only on localhost and is not exposed directly to the internet. The only externally accessible part is the frontend served by Nginx. For a real production system, traffic would be forced through HTTPS with a valid certificate and security groups would be restricted further. Here, the setup is left intentionally open just enough to allow simple testing without additional obstacles.
 
+This approach makes it easy to rebuild or re-run the entire environment without dealing with certificate trust issues or complex access restrictions. The decisions above will be revisited later if the project is expanded into a more advanced version.
 
+Future Work
 
-  Deployment Workflow
+The next steps are refining the backend logic, improving the frontend design, adding history visualisation of previous analyses and considering full HTTPS reverse proxy integration once a domain name is available. If needed, the backend can also be containerised or moved behind a load balancer as part of a future scaling demonstration.
 
-  Terraform Phase — Provision AWS Infrastructure
+Author
 
+Presiyan Rusinov
+DevOps | Linux | Terraform | Ansible | AWS
+rusinovpresian@gmail.com
 
-cd terraform
-terraform init
-terraform plan
-terraform apply -auto-approve
+GitHub repository: https://github.com/presianrusinov/ansible-nginx-hardening
 
-
-Creates:
-
-VPC, Subnet, Internet Gateway, Route Table
-
-Security Group (ports 22, 80, 443)
-
-EC2 instance (Amazon Linux 2023)
-
-Output with the public IP
-
-Example:
-
-Outputs:
-ec2_public_ip = "63.177.86.189"
-
- Ansible Phase — Configure and Harden Nginx
-
-Edit inventory/hosts:
-
-[aws_nginx]
-63.177.86.189 ansible_user=ec2-user ansible_ssh_private_key_file=~/.ssh/aws_key
-
-
-Run:
-
-ansible -i inventory/hosts aws_nginx -m ping
-ansible-playbook -i inventory/hosts site.yml
-
-
-This will:
-
-Install and configure Nginx
-
-Apply hardening (SSL, permissions, SELinux)
-
-Deploy an example HTML page
-
- Verification
-
-Access:
-http://63.177.86.189
-
-You should see:
-
-Nginx is running on AWS EC2 (Amazon Linux 2023)
-This page is automatically deployed via Ansible + Terraform.
-
- Screenshots
-Description	Image
- Terraform Apply Success	
-
- Ansible Playbook Success	
-
- Working Nginx Page	
- Security Hardening Summary
-Category	Action
-Server Tokens	Disabled
-File Permissions	0644 / 0755 enforced
-SELinux Context	httpd_sys_content_t
-SSL	Self-signed certificate
-Root Path	/usr/share/nginx/html
- Next Phase (AI HTML “About Me” Page)
-
-Next, the default landing page will be replaced with an AI-generated HTML “About Me” — a personalized web profile automatically deployed via Ansible.
 
  Author
-
-Presian Rusinov
-DevOps | Linux | Terraform | Ansible | AWS
- presianrusinov@gmail.com
-
- GitHub Repo : https://github.com/presianrusinov/ansible-nginx-hardening
-
-
- NOTE: Clarification on the use of ports and certificates
-
-Port 80 is intentionally left open even though the service is also available over HTTPS on port 443. This is not a security weakness. Port 80 is required for the normal operation of the web server,
-because it handles the automatic redirection from HTTP to HTTPS. Many clients and tools make their initial request over HTTP and expect to be redirected to a secure connection. Closing port 80 would 
-result in unexpected behavior, failed requests, and in some cases complete loss of access.
-
-Port 80 is also necessary for certificate validation mechanisms (such as ACME/Let’s Encrypt). The process of issuing or renewing certificates relies on HTTP access to verify domain ownership. If this port is closed, certificates cannot be issued or updated.
-
-The “Not secure” message in the browser is expected when a self-signed certificate is used. This warning does not indicate a misconfiguration or an insecure setup; it simply means that the certificate was not issued by a publicly trusted authority. A real public certificate can be added if needed, but for demonstration, testing, or internal development, a self-signed certificate is completely acceptable.
-
-These decisions follow standard practices for EC2-based web deployments and help ensure stable behavior, accessibility, and predictable operation of the service.
-
-Keep consistent IP addressing in VirtualBox setups
-
-🧠 Author
 
 Maintainer: Presiyan Rusinov
 License: MIT
