@@ -32,3 +32,8 @@ variable "ami_id" {
   type        = string
 }
 
+variable "ssh_allowed_cidr" {
+  description = "CIDR for SSH access from your public IP"
+  type        = string
+}
+

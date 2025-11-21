@@ -44,22 +44,27 @@ resource "aws_route_table_association" "a" {
 
 resource "aws_security_group" "nginx_sg" {
   name        = "${var.project_name}-sg"
-  description = "Allow SSH and HTTP"
+  description = "Allow only SSH from home IP + HTTPS from Internet"
   vpc_id      = aws_vpc.main.id
 
+  # SSH — ONLY your IP
   ingress {
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = [var.ssh_allowed_cidr]
   }
 
+  # HTTPS only
   ingress {
-    from_port   = 80
-    to_port     = 80
+    from_port   = 443
+    to_port     = 443
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
+
+  # NO HTTP (80) allowed in SG
+  # NGINX will redirect 80 → 443 internally
 
   egress {
     from_port   = 0

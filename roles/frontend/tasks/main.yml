@@ -1,0 +1,18 @@
+---
+- name: Deploy frontend files
+  copy:
+    src: "{{ item }}"
+    dest: /usr/share/nginx/html/
+    owner: root
+    group: root
+    mode: '0644'
+  with_items:
+    - index.html
+    - style.css
+    - script.js
+
+- name: Reload nginx
+  service:
+    name: nginx
+    state: reloaded
+
