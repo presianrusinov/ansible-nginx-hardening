@@ -1,137 +1,151 @@
-#  Ansible Nginx Hardening Project
+DevOps Project — Ansible + Terraform + AWS + Nginx Hardening
 
-This project demonstrates a complete Ansible automation setup for Nginx installation and service hardening between two RHEL 9.6 virtual machines._
-
----
-
-# 🧱 Infrastructure Overview
-
-| Role         | Hostname       | OS       | IP Address     | Purpose          |
-|---------------|----------------|-----------|----------------|------------------|
-| Control Node | control-node   | RHEL 9.6 | 192.168.118.10 | Runs Ansible     |
-| Target Node  | target-node    | RHEL 9.6 | 192.168.118.11 | Managed by Ansible |
-
-VirtualBox configuration:
-- Adapter 1 (NAT): Internet access (Red Hat subscription, package updates)  
-- Adapter 2 (Host-only): Internal LAN for Ansible control
+This project demonstrates a complete Infrastructure as Code (IaC) workflow using Terraform, Ansible, and AWS.  
+It automatically provisions an EC2 instance (Amazon Linux 2023), secures it with Nginx hardening, and deploys an HTML page served over HTTP and HTTPS.
 
 ---
 
-# Step 0 — Environment Preparation
+  Live Demo
+ Public URL: [http://63.177.86.189](http://63.177.86.189) 
 
-# Control Node
-- Installed `ansible-core 2.14.18`
-- Registered via `subscription-manager`
-- Verified SSH and network connectivity (`ping 192.168.118.11`)
-- Configured passwordless SSH to target node
-
-# Target Node
-- Registered to Red Hat
-- Created `ansible` user (non-root best practice)
-- Allowed SSH access for the ansible user
+(Hosted on AWS EC2, deployed automatically via Terraform + Ansible.)
 
 ---
 
-## 🔐 SSH Configuration
+ Project Overview
 
-Passwordless SSH setup between control and target nodes.
-
-#bash
-# On target node:
-drwx------ ansible ansible /home/ansible/.ssh
--rw------- ansible ansible /home/ansible/.ssh/authorized_keys
-
-Validation Test
-[root@control-node ~]# ssh ansible@192.168.118.11
-Last login: ...
-[ansible@target-node ~]$
+Stack used:
+-  AWS EC2 (t2.micro, Free Tier)
+-  Terraform — creates infrastructure
+-  Ansible — configures and hardens Nginx
+-  Security — SELinux, SSL, Permissions, `server_tokens off` - to be done and improved
+-  Next phase: AI-generated “About Me” HTML page
 
 
-✅ Result: connection works without password
 
-📁 Project Structure
+ Project Structure
+
+
+
 ansible-nginx-hardening/
 ├── ansible.cfg
 ├── inventory/
-│   └── hosts
+│ └── hosts
 ├── roles/
-│   └── nginx_hardening/
-│       └── tasks/
-│           └── main.yml
-└── site.yml
-
-⚙️ Step 1 — Verify Connectivity
-ansible -i inventory/hosts target -m ping
-
-
-Expected output:
-
-192.168.118.11 | SUCCESS => {
-    "changed": false,
-    "ping": "pong"
-}
-
-🚀 Step 2 — Deploy & Harden Nginx
-roles/nginx_hardening/tasks/main.yml
-- name: Install Nginx
-  ansible.builtin.dnf:
-    name: nginx
-    state: present
-
-- name: Ensure Nginx is enabled and running
-  ansible.builtin.service:
-    name: nginx
-    enabled: true
-    state: started
-
-site.yml
-- name: Nginx Hardening Playbook
-  hosts: target
-  become: true
-  roles:
-    - nginx_hardening
-
-🧪 Step 3 — Run the Playbook
-ansible-playbook site.yml
+│ └── nginx_hardening/
+│ ├── tasks/harden.yml
+│ ├── handlers/main.yml
+│ ├── defaults/
+│ ├── vars/
+│ └── templates/
+├── site.yml
+└── terraform/
+├── main.tf
+├── variables.tf
+├── outputs.tf
+├── provider.tf
+├── terraform.tfvars
+└── ansible-provision.sh
 
 
-Expected output:
-
-PLAY RECAP *********************************************************************
-192.168.118.11 : ok=3  changed=2  unreachable=0  failed=0
-
-🔎 Step 4 — Verification
-systemctl status nginx
-ss -tuln | grep 80
 
 
-✅ Expected: Nginx active & listening on port 80
+  Deployment Workflow
 
-🧩 Next Steps
+  Terraform Phase — Provision AWS Infrastructure
 
-Disable default index page
 
-Harden /etc/nginx permissions
+cd terraform
+terraform init
+terraform plan
+terraform apply -auto-approve
 
-Add server_tokens off
 
-Configure SSL/TLS certificates
+Creates:
 
- Notes:
+VPC, Subnet, Internet Gateway, Route Table
 
-Both VMs run RHEL 9.6
+Security Group (ports 22, 80, 443)
 
-Control Node runs Ansible 2.14.18
+EC2 instance (Amazon Linux 2023)
 
-SSH authentication fixed (see notes.md for troubleshooting)
+Output with the public IP
 
-Lessons learned:
+Example:
 
-Always verify permissions and ownership
+Outputs:
+ec2_public_ip = "63.177.86.189"
 
-Test SSH manually before automation
+ Ansible Phase — Configure and Harden Nginx
 
-Avoid using root for remote connections
+Edit inventory/hosts:
+
+[aws_nginx]
+63.177.86.189 ansible_user=ec2-user ansible_ssh_private_key_file=~/.ssh/aws_key
+
+
+Run:
+
+ansible -i inventory/hosts aws_nginx -m ping
+ansible-playbook -i inventory/hosts site.yml
+
+
+This will:
+
+Install and configure Nginx
+
+Apply hardening (SSL, permissions, SELinux)
+
+Deploy an example HTML page
+
+ Verification
+
+Access:
+http://63.177.86.189
+
+You should see:
+
+Nginx is running on AWS EC2 (Amazon Linux 2023)
+This page is automatically deployed via Ansible + Terraform.
+
+ Screenshots
+Description	Image
+ Terraform Apply Success	
+
+ Ansible Playbook Success	
+
+ Working Nginx Page	
+ Security Hardening Summary
+Category	Action
+Server Tokens	Disabled
+File Permissions	0644 / 0755 enforced
+SELinux Context	httpd_sys_content_t
+SSL	Self-signed certificate
+Root Path	/usr/share/nginx/html
+ Next Phase (AI HTML “About Me” Page)
+
+Next, the default landing page will be replaced with an AI-generated HTML “About Me” — a personalized web profile automatically deployed via Ansible.
+
+ Author
+
+Presian Rusinov
+DevOps | Linux | Terraform | Ansible | AWS
+ presianrusinov@gmail.com
+
+ GitHub Repo : https://github.com/presianrusinov/ansible-nginx-hardening
+
+
+ NOTE: Clarification on the use of ports and certificates
+
+Port 80 is intentionally left open even though the service is also available over HTTPS on port 443. This is not a security weakness. Port 80 is required for the normal operation of the web server,
+because it handles the automatic redirection from HTTP to HTTPS. Many clients and tools make their initial request over HTTP and expect to be redirected to a secure connection. Closing port 80 would 
+result in unexpected behavior, failed requests, and in some cases complete loss of access.
+
+Port 80 is also necessary for certificate validation mechanisms (such as ACME/Let’s Encrypt). The process of issuing or renewing certificates relies on HTTP access to verify domain ownership. If this port is closed, certificates cannot be issued or updated.
+
+The “Not secure” message in the browser is expected when a self-signed certificate is used. This warning does not indicate a misconfiguration or an insecure setup; it simply means that the certificate was not issued by a publicly trusted authority. A real public certificate can be added if needed, but for demonstration, testing, or internal development, a self-signed certificate is completely acceptable.
+
+These decisions follow standard practices for EC2-based web deployments and help ensure stable behavior, accessibility, and predictable operation of the service.
 
 Keep consistent IP addressing in VirtualBox setups
 
