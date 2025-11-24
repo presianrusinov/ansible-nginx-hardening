@@ -1,5 +1,7 @@
 DevOps Project: Terraform, Ansible, AWS EC2 and Nginx
 
+Live demo at: http://63.177.86.189/
+
 This project demonstrates a complete end-to-end workflow for deploying an application in the cloud using Infrastructure as Code. The environment is built on AWS EC2 (Amazon Linux 2023) and is fully configured through Terraform and Ansible. On top of the basic Nginx deployment, the project now includes a lightweight AI-style text analysis service written in Python (Flask), along with a custom frontend interface.
 
 The project was created with the goal of practicing a realistic DevOps deployment pipeline: provisioning, configuration management, service automation, and application delivery.
