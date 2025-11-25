@@ -1,0 +1,29 @@
+---
+- name: Deploy Nginx reverse proxy config for backend
+  copy:
+    src: ai-backend.conf
+    dest: /etc/nginx/conf.d/ai-backend.conf
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Remove default nginx config if exists
+  file:
+    path: /etc/nginx/conf.d/default.conf
+    state: absent
+
+- name: Test Nginx configuration
+  command: nginx -t
+  register: nginx_test
+  ignore_errors: yes
+
+- name: Fail if Nginx config test fails
+  fail:
+    msg: "Nginx config test failed: {{ nginx_test.stderr }}"
+  when: nginx_test.rc != 0
+
+- name: Reload Nginx
+  service:
+    name: nginx
+    state: reloaded
+

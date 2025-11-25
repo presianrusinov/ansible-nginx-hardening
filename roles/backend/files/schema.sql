@@ -5,6 +5,6 @@ CREATE TABLE IF NOT EXISTS analysis (
     sentiment TEXT,
     sentiment_score REAL,
     keywords TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 

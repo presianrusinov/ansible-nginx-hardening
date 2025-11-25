@@ -1,10 +1,11 @@
 ---
-- name: Apply Nginx hardening
-  hosts: [aws_nginx]
+- name: Configure and deploy AI + DevOps app on AWS EC2
+  hosts: aws_nginx
   become: yes
 
   roles:
     - nginx_hardening
-    - frontend
     - backend
+    - reverse_proxy
+    - frontend
 

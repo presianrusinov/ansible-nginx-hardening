@@ -11,14 +11,15 @@ const keywordsOutput = document.getElementById("keywordsOutput");
 const historyList = document.getElementById("historyList");
 
 const historyMax = 6;
-const useMockIfApiFails = true;
+const useMockIfApiFails = false;
 
 analyzeBtn.addEventListener("click", async () => {
   const text = inputText.value.trim();
-  const mode = modeSelect.value;
+  const mode = modeSelect.value || "default";
 
   if (!text) {
-    statusMessage.textContent = "Please enter some text before running analysis.";
+    statusMessage.textContent =
+      "Please enter some text before running analysis.";
     return;
   }
 
@@ -28,15 +29,19 @@ analyzeBtn.addEventListener("click", async () => {
   try {
     const result = await analyzeText(text, mode);
     renderResult(text, result);
-    pushHistory(text, result);
+    prependHistoryItem(text, result);
     statusMessage.textContent = "Analysis completed.";
   } catch (err) {
     console.error("Analysis failed:", err);
     statusMessage.textContent =
-      "Analysis failed. A local fallback was used or no result could be produced.";
+      "Analysis failed. Please try again in a moment.";
   } finally {
     setLoading(false);
   }
+});
+
+window.addEventListener("load", () => {
+  loadRecentHistory();
 });
 
 function setLoading(isLoading) {
@@ -52,28 +57,20 @@ function setLoading(isLoading) {
 async function analyzeText(text, mode) {
   const payload = { text, mode };
 
-  try {
-    const response = await fetch("/api/analyze", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    });
+  const response = await fetch("/api/analyze", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
 
-    if (!response.ok) {
-      throw new Error(`HTTP error ${response.status}`);
-    }
-
-    const data = await response.json();
-    return normalizeResult(data);
-  } catch (err) {
-    console.warn("API call failed, reason:", err.message);
-    if (useMockIfApiFails) {
-      return generateMockAnalysis(text, mode);
-    }
-    throw err;
+  if (!response.ok) {
+    throw new Error(`HTTP error ${response.status}`);
   }
+
+  const data = await response.json();
+  return normalizeResult(data);
 }
 
 function normalizeResult(data) {
@@ -84,46 +81,6 @@ function normalizeResult(data) {
       typeof data.sentiment_score === "number" ? data.sentiment_score : 0,
     keywords: Array.isArray(data.keywords) ? data.keywords : [],
     created_at: data.created_at || new Date().toISOString(),
-  };
-}
-
-function generateMockAnalysis(text, mode) {
-  const length = text.length;
-  const wordCount = text.split(/\s+/).filter(Boolean).length;
-  const score = Math.max(-1, Math.min(1, (wordCount % 11) / 5 - 1));
-
-  let sentiment;
-  if (score > 0.25) sentiment = "positive";
-  else if (score < -0.25) sentiment = "negative";
-  else sentiment = "neutral";
-
-  const summary =
-    text.length > 160
-      ? text.slice(0, 140).trimEnd() + "..."
-      : "Short text detected. The content is relatively brief and easy to process.";
-
-  const tokens = text
-    .toLowerCase()
-    .replace(/[^a-zA-Zа-яА-Я0-9\s]/g, " ")
-    .split(/\s+/)
-    .filter((w) => w.length > 4);
-
-  const freq = {};
-  for (const t of tokens) {
-    freq[t] = (freq[t] || 0) + 1;
-  }
-
-  const sortedKeywords = Object.entries(freq)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 6)
-    .map(([w]) => w);
-
-  return {
-    summary,
-    sentiment,
-    sentiment_score: Number(score.toFixed(2)),
-    keywords: sortedKeywords,
-    created_at: new Date().toISOString(),
   };
 }
 
@@ -177,7 +134,34 @@ function renderResult(inputTextValue, result) {
   }
 }
 
-function pushHistory(text, result) {
+async function loadRecentHistory() {
+  try {
+    const response = await fetch("/api/recent");
+    if (!response.ok) {
+      throw new Error(`HTTP error ${response.status}`);
+    }
+
+    const items = await response.json();
+    historyList.innerHTML = "";
+
+    if (!items.length) {
+      const p = document.createElement("p");
+      p.className = "placeholder";
+      p.textContent =
+        "Once you start analyzing text, the last few entries will appear here.";
+      historyList.appendChild(p);
+      return;
+    }
+
+    items.forEach((item) => {
+      prependHistoryItem(item.text, normalizeResult(item), false);
+    });
+  } catch (err) {
+    console.error("Failed to load recent history:", err);
+  }
+}
+
+function prependHistoryItem(text, result, prepend = true) {
   const item = document.createElement("div");
   item.className = "history-item";
 
@@ -193,7 +177,9 @@ function pushHistory(text, result) {
   if (text.length > 60) preview.textContent += "...";
 
   const meta = document.createElement("span");
-  meta.textContent = `${capitalize(result.sentiment || "neutral")} · ${timeStr}`;
+  meta.textContent = `${capitalize(
+    result.sentiment || "neutral"
+  )} · ${timeStr}`;
 
   item.appendChild(preview);
   item.appendChild(meta);
@@ -202,7 +188,11 @@ function pushHistory(text, result) {
     historyList.innerHTML = "";
   }
 
-  historyList.prepend(item);
+  if (prepend) {
+    historyList.prepend(item);
+  } else {
+    historyList.appendChild(item);
+  }
 
   const items = historyList.querySelectorAll(".history-item");
   if (items.length > historyMax) {
