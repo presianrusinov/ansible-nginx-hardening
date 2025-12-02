@@ -5,6 +5,7 @@ After=network.target
 [Service]
 User=ec2-user
 WorkingDirectory=/var/www/ai_project
+Environment="NLTK_DATA=/usr/local/share/nltk_data"
 ExecStart=/usr/bin/python3 /var/www/ai_project/app.py
 Restart=always
 

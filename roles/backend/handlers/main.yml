@@ -1,0 +1,5 @@
+- name: restart backend
+  systemd:
+    name: ai-backend
+    state: restarted
+

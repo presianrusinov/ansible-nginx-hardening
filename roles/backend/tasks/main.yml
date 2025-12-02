@@ -11,8 +11,6 @@
   copy:
     src: "{{ item }}"
     dest: /var/www/ai_project/{{ item }}
-    owner: ec2-user
-    group: ec2-user
     mode: '0644'
   loop:
     - app.py
@@ -20,7 +18,7 @@
     - schema.sql
     - requirements.txt
 
-- name: Install pip for Python 3 on Amazon Linux 2023
+- name: Install pip for Python 3
   shell: |
     curl -sS https://bootstrap.pypa.io/get-pip.py -o /tmp/get-pip.py
     python3 /tmp/get-pip.py
@@ -30,21 +28,38 @@
 - name: Install Python dependencies
   pip:
     requirements: /var/www/ai_project/requirements.txt
-    executable: pip3
 
-- name: Deploy systemd service
+# ---------------------------
+# FIX: Proper NLTK install
+# ---------------------------
+
+- name: Ensure NLTK directory exists in correct system path
+  file:
+    path: /usr/local/share/nltk_data/sentiment
+    state: directory
+    mode: '0755'
+
+- name: Download VADER lexicon manually
+  get_url:
+    url: https://raw.githubusercontent.com/cjhutto/vaderSentiment/master/vaderSentiment/vader_lexicon.txt
+    dest: /usr/local/share/nltk_data/sentiment/vader_lexicon.txt
+    mode: '0644'
+
+# ---------------------------
+# Systemd service fix
+# ---------------------------
+
+- name: Deploy systemd service with NLTK_DATA path
   copy:
     src: ai-backend.service
     dest: /etc/systemd/system/ai-backend.service
-    owner: root
-    group: root
     mode: '0644'
 
-- name: Reload systemd
+- name: Reload systemd daemon
   systemd:
     daemon_reload: yes
 
-- name: Enable and start service
+- name: Enable and restart backend service
   systemd:
     name: ai-backend.service
     enabled: yes
