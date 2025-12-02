@@ -1,89 +1,72 @@
 from flask import Flask, request, jsonify
-from datetime import datetime
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
-from database import get_db, init_db
+import sqlite3
+from datetime import datetime
 
 app = Flask(__name__)
-
-# Initialize Vader (no nltk)
 analyzer = SentimentIntensityAnalyzer()
 
+DB_PATH = "/var/www/ai_project/ai.db"
 
-# --------------------------
-# Sentiment Analysis
-# --------------------------
-def analyze_sentiment(text):
-    scores = analyzer.polarity_scores(text)
-    score = scores["compound"]
+# Ensure DB + table
+def init_db():
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.cursor()
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS analysis (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            text TEXT NOT NULL,
+            summary TEXT,
+            sentiment TEXT,
+            sentiment_score REAL,
+            keywords TEXT,
+            created_at TEXT
+        );
+    """)
+    conn.commit()
+    conn.close()
 
-    if score >= 0.05:
-        sentiment = "positive"
-    elif score <= -0.05:
-        sentiment = "negative"
-    else:
-        sentiment = "neutral"
+init_db()
 
-    return sentiment, score
-
-
-# --------------------------
-# Summary (simple rule)
-# --------------------------
-def summarize(text):
-    if len(text) <= 120:
-        return text
-    return text[:120].rsplit(" ", 1)[0] + "..."
-
-
-# --------------------------
-# Keywords
-# --------------------------
 def extract_keywords(text):
-    words = [
-        w.lower() for w in text.split()
-        if len(w) > 4 and w.isalpha()
-    ]
-    freq = {}
-    for w in words:
-        freq[w] = freq.get(w, 0) + 1
-    sorted_kw = sorted(freq, key=freq.get, reverse=True)
-    return sorted_kw[:6]
+    words = text.split()
+    return [w for w in words if len(w) > 4]
 
-
-# --------------------------
-# API
-# --------------------------
 @app.route("/api/analyze", methods=["POST"])
-def api_analyze():
-    data = request.json
+def analyze():
+    data = request.get_json()
     text = data.get("text", "")
 
-    if not text:
-        return jsonify({"error": "Text required"}), 400
+    sentiment_scores = analyzer.polarity_scores(text)
+    sentiment_score = sentiment_scores["compound"]
+    sentiment = ("positive" if sentiment_score > 0
+                 else "negative" if sentiment_score < 0
+                 else "neutral")
 
-    sentiment, score = analyze_sentiment(text)
-    summary = summarize(text)
     keywords = extract_keywords(text)
+    summary = text[:200]
 
-    # save to DB
-    conn = get_db()
-    conn.execute(
-        "INSERT INTO analysis (text, summary, sentiment, sentiment_score, keywords) "
-        "VALUES (?, ?, ?, ?, ?)",
-        (text, summary, sentiment, score, ",".join(keywords)),
+    created_at = datetime.utcnow().isoformat()
+
+    # Save into DB
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.cursor()
+    cur.execute(
+        "INSERT INTO analysis (text, summary, sentiment, sentiment_score, keywords, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+        (text, summary, sentiment, sentiment_score, ", ".join(keywords), created_at)
     )
     conn.commit()
+    conn.close()
 
     return jsonify({
+        "text": text,
         "summary": summary,
         "sentiment": sentiment,
-        "sentiment_score": score,
+        "sentiment_score": sentiment_score,
         "keywords": keywords,
-        "created_at": datetime.utcnow().isoformat()
+        "created_at": created_at
     })
 
-
 if __name__ == "__main__":
-    init_db()
-    app.run(host="0.0.0.0", port=5000)
+    app.run(host="127.0.0.1", port=5000)
 
