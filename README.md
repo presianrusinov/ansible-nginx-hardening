@@ -1,44 +1,164 @@
 DevOps Project: Terraform, Ansible, AWS EC2 and Nginx
 
-Live demo at: http://63.177.86.189/
+Live demo:
+http://63.177.86.189/
 
-This project demonstrates a complete end-to-end workflow for deploying an application in the cloud using Infrastructure as Code. The environment is built on AWS EC2 (Amazon Linux 2023) and is fully configured through Terraform and Ansible. On top of the basic Nginx deployment, the project now includes a lightweight AI-style text analysis service written in Python (Flask), along with a custom frontend interface.
+This project demonstrates a complete end-to-end DevOps workflow for deploying a small application in the cloud using Infrastructure as Code. The environment is built on AWS EC2 (Amazon Linux 2023) and is fully automated using Terraform and Ansible. In addition to the Nginx setup, the project includes a lightweight text-analysis backend written in Python (Flask) and a custom frontend interface.
 
-The project was created with the goal of practicing a realistic DevOps deployment pipeline: provisioning, configuration management, service automation, and application delivery.
+The purpose of the project is to practice a realistic DevOps deployment pipeline: provisioning, configuration management, service automation and application delivery.
 
 Application Overview
 
-The application consists of two parts: a static frontend served by Nginx and a small backend service running on Flask. The backend performs simple text analysis (summary, sentiment, keywords) and stores results in a SQLite database. Everything is deployed on a single EC2 instance.
-The frontend communicates with the backend through a thin API layer, and both components are provisioned and configured automatically through Ansible.
+The application consists of two main components:
+
+Frontend – static HTML/CSS/JS served by Nginx.
+
+Backend – a small Flask service that performs text analysis (summary, sentiment, keywords) using the VADER sentiment library.
+
+Database – each analysis is stored locally in a SQLite file.
+
+Everything runs on a single EC2 instance. The frontend communicates with the backend through a small internal API, and both components are fully deployed and configured using Ansible.
 
 Infrastructure Workflow
+Terraform layer
 
-Terraform creates the full AWS environment:
-VPC, subnet, route table, internet gateway, security group and the EC2 instance. After the instance is online, its public IP address is used for the Ansible inventory.
+Terraform provisions the full AWS environment:
 
-Ansible then connects to the instance and performs the required setup steps:
-installation and configuration of Nginx, deployment of the frontend files, installation of Python packages, configuration of the Flask backend service and creation of a systemd unit that runs the backend automatically.
+VPC
 
-Once the playbook finishes, both the frontend and backend become available immediately.
+Subnet
+
+Route table
+
+Internet gateway
+
+Security group
+
+EC2 instance
+
+After Terraform finishes, it outputs the public IP address of the instance. This same IP is then used inside the Ansible inventory.
+
+Ansible layer
+
+Once the EC2 machine is reachable by SSH, Ansible performs the remaining setup:
+
+installs and configures Nginx
+
+deploys the static frontend files
+
+installs Python and the required dependencies
+
+deploys the Flask backend
+
+creates and enables a systemd service for the backend
+
+prepares the directory structure and database file
+
+When the playbook completes, both the frontend and backend are live.
 
 Project Layout
 
-The repository contains two main sections: one for Terraform and one for Ansible. The Terraform folder includes the EC2 setup, networking and outputs. The Ansible folder contains the roles for the frontend and backend, the site playbook and the inventory.
+The repository is structured into two main directories:
 
-The backend files (Python scripts, schema and requirements) are placed inside the backend role, which copies them to the server and configures the service. The frontend role keeps the static HTML, CSS and JavaScript files which get deployed to the Nginx root directory.
+terraform/ — contains the EC2 definition, networking, outputs and variables
+
+ansible/ — contains roles for the frontend and backend, the site playbook and the inventory
+
+The backend role includes:
+
+app.py (Flask application)
+
+requirements.txt
+
+systemd unit file
+
+database initialization logic
+
+The frontend role contains the static UI files which are copied to the Nginx root directory.
+
+Database Details (SQLite)
+
+The project uses a simple SQLite database (ai.db) to store every text analysis performed by the backend.
+
+Location
+/var/www/ai_project/ai.db
+
+
+SQLite is used because it is lightweight, serverless and perfectly suitable for a small single-instance application.
+
+Schema
+
+The database initializes itself when the backend starts for the first time.
+The table structure is:
+
+CREATE TABLE IF NOT EXISTS analysis (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    text TEXT NOT NULL,
+    summary TEXT,
+    sentiment TEXT,
+    sentiment_score REAL,
+    keywords TEXT,
+    created_at TEXT
+);
+
+How the backend uses the database
+
+The POST request /api/analyze receives JSON input:
+
+{ "text": "..." }
+
+
+The backend runs its analysis:
+
+sentiment via VADER
+
+keyword extraction
+
+summary
+
+The result is stored as a new entry in the analysis table.
+
+The API returns the full dataset back to the frontend, including the generated fields and timestamp.
+
+Checking stored results
+
+On the EC2 instance:
+
+sqlite3 /var/www/ai_project/ai.db "SELECT * FROM analysis;"
+
+Why SQLite for this project
+
+It keeps the setup simple and reproducible. No additional services are required (no MySQL/PostgreSQL), and the entire environment can be recreated from scratch instantly by running Terraform + Ansible again.
+For a larger or multi-instance deployment, the backend could easily be adapted to use RDS or another external database.
 
 Security Notes
 
-The current security configuration is kept intentionally simple so the project can remain easy to understand and reproduce on any new instance.
-Port 80 is open publicly and allows direct HTTP access. This is not ideal for production but is acceptable for a small experimental project where ease of access is more important than strict hardening. The service does not process anything sensitive, and the demonstrational nature of the project makes strict HTTPS enforcement unnecessary at this stage.
+The security configuration is intentionally kept minimal so the project can remain easy to rebuild and test:
 
-The backend API listens only on localhost and is not exposed directly to the internet. The only externally accessible part is the frontend served by Nginx. For a real production system, traffic would be forced through HTTPS with a valid certificate and security groups would be restricted further. Here, the setup is left intentionally open just enough to allow simple testing without additional obstacles.
+Port 80 is open publicly for easier access during testing.
 
-This approach makes it easy to rebuild or re-run the entire environment without dealing with certificate trust issues or complex access restrictions. The decisions above will be revisited later if the project is expanded into a more advanced version.
+The backend listens only on localhost and is not directly exposed.
+
+No sensitive data is processed.
+
+For a production environment, HTTPS termination, stricter security groups and more advanced hardening would be required.
+Here, the priority is simplicity and clarity of the workflow.
 
 Future Work
 
-The next steps are refining the backend logic, improving the frontend design, adding history visualisation of previous analyses and considering full HTTPS reverse proxy integration once a domain name is available. If needed, the backend can also be containerised or moved behind a load balancer as part of a future scaling demonstration.
+Planned improvements:
+
+enhance the backend logic and error handling
+
+polish the frontend UI
+
+add visualization for stored analyses
+
+enable HTTPS once a domain is available
+
+containerize the backend or run it behind a load balancer
+
+optionally migrate the database to RDS
 
 Author
 
@@ -46,10 +166,7 @@ Presiyan Rusinov
 DevOps | Linux | Terraform | Ansible | AWS
 rusinovpresian@gmail.com
 
-GitHub repository: https://github.com/presianrusinov/ansible-nginx-hardening
+GitHub repository:
+https://github.com/presianrusinov/ansible-nginx-hardening
 
-
- Author
-
-Maintainer: Presiyan Rusinov
 License: MIT
