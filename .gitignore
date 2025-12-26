@@ -9,3 +9,11 @@ terraform/terraform.tfstate.backup
 inventory/hosts
 roles/backend/files/__pycache__/
 
+
+# Terraform
+**/.terraform/*
+**/.terraform.lock.hcl
+**/*.tfstate
+**/*.tfstate.*
+**/crash.log
+**/crash.*.log

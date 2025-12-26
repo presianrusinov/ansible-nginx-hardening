@@ -1,0 +1,3 @@
+web_owner_user: ansible
+web_owner_group: ansible
+backend_service_user: ansible

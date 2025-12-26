@@ -1,6 +1,6 @@
 ---
 - name: Configure and deploy AI + DevOps app on AWS EC2
-  hosts: aws_nginx
+  hosts: hetzner_nginx
   become: yes
 
   roles:
