@@ -1,170 +1,178 @@
-DevOps Project: Terraform, Ansible, AWS EC2 and Nginx
+# AI Text Analyzer – Terraform and Ansible deployment on Hetzner Cloud
 
 Live demo:
-http://63.177.86.189/
+http://46.224.191.124
 
-This project demonstrates a complete end-to-end DevOps workflow for deploying a small application in the cloud using Infrastructure as Code. The environment is built on AWS EC2 (Amazon Linux 2023) and is fully automated using Terraform and Ansible. In addition to the Nginx setup, the project includes a lightweight text-analysis backend written in Python (Flask) and a custom frontend interface.
+Repository:
+https://github.com/presianrusinov/ansible-nginx-hardening
 
-The purpose of the project is to practice a realistic DevOps deployment pipeline: provisioning, configuration management, service automation and application delivery.
 
-Application Overview
+Overview
 
-The application consists of two main components:
+This project demonstrates a complete end-to-end DevOps workflow for provisioning, configuring and deploying a small web application in the cloud using Infrastructure as Code and configuration management.
 
-Frontend – static HTML/CSS/JS served by Nginx.
+The environment is fully reproducible. A single command sequence can provision the server, configure the operating system, deploy the application stack and make it available publicly.
 
-Backend – a small Flask service that performs text analysis (summary, sentiment, keywords) using the VADER sentiment library.
+The project focuses on realistic DevOps practices rather than production-grade complexity.
 
-Database – each analysis is stored locally in a SQLite file.
 
-Everything runs on a single EC2 instance. The frontend communicates with the backend through a small internal API, and both components are fully deployed and configured using Ansible.
+Why Hetzner Cloud (migration from AWS)
 
-Infrastructure Workflow
-Terraform layer
+The project was initially deployed on AWS EC2. It was later migrated to Hetzner Cloud for cost optimization and predictable monthly expenses while preserving the same technical workflow and deployment logic.
 
-Terraform provisions the full AWS environment:
+The migration did not change the architecture or tooling philosophy:
+Terraform is still responsible for infrastructure provisioning.
+Ansible is still responsible for configuration and application deployment.
 
-VPC
+The current live demo runs on Hetzner Cloud, while the AWS implementation is kept as a historical reference in the project’s evolution.
 
-Subnet
 
-Route table
+Operating system and environment
 
-Internet gateway
+The server runs Rocky Linux 9, chosen to stay close to a Red Hat Enterprise Linux-like environment with systemd and SELinux enabled.
 
-Security group
+A dedicated ansible user is used for configuration management with passwordless sudo access.
 
-EC2 instance
 
-After Terraform finishes, it outputs the public IP address of the instance. This same IP is then used inside the Ansible inventory.
+High-level architecture
 
-Ansible layer
+The application runs entirely on a single virtual machine.
 
-Once the EC2 machine is reachable by SSH, Ansible performs the remaining setup:
+Nginx serves static frontend files over HTTP on port 80.
 
-installs and configures Nginx
+Nginx also acts as a reverse proxy for backend API requests under /api/.
 
-deploys the static frontend files
+The backend is a small Flask application running as a systemd service and listening only on localhost.
 
-installs Python and the required dependencies
+The backend persists results in a local SQLite database.
 
-deploys the Flask backend
+The backend is not exposed publicly and can only be accessed through Nginx.
 
-creates and enables a systemd service for the backend
 
-prepares the directory structure and database file
+Infrastructure provisioning (Terraform)
 
-When the playbook completes, both the frontend and backend are live.
+Terraform is used to provision the infrastructure on Hetzner Cloud.
 
-Project Layout
+The Terraform layer creates:
+A virtual machine using a Rocky Linux image
+Firewall rules allowing HTTP access
+Firewall rules restricting SSH access to a single public IP address
 
-The repository is structured into two main directories:
+The Hetzner API token is provided through an environment variable and is not stored in the repository.
 
-terraform/ — contains the EC2 definition, networking, outputs and variables
+After provisioning, Terraform outputs the public IP address which is then used by Ansible.
 
-ansible/ — contains roles for the frontend and backend, the site playbook and the inventory
 
-The backend role includes:
+Configuration management and deployment (Ansible)
 
-app.py (Flask application)
+Ansible connects to the server using the ansible user and performs the full configuration.
 
-requirements.txt
+Ansible installs and configures:
+Nginx
+Python 3 and required dependencies
+The backend application
+A systemd service for the backend
+The static frontend files
+The Nginx reverse proxy configuration
 
-systemd unit file
+When the playbook completes, the application is immediately available.
 
-database initialization logic
 
-The frontend role contains the static UI files which are copied to the Nginx root directory.
+Frontend
 
-Database Details (SQLite)
+The frontend consists of static HTML, CSS and JavaScript files.
 
-The project uses a simple SQLite database (ai.db) to store every text analysis performed by the backend.
+The files are deployed to:
+/usr/share/nginx/html
 
-Location
+The frontend communicates with the backend using HTTP requests to:
+/api/
+
+
+Backend
+
+The backend is a Flask application that performs basic text analysis.
+
+It provides an API endpoint:
+POST /api/analyze
+
+The backend runs as a systemd service named:
+ai-backend.service
+
+It listens only on:
+127.0.0.1:5000
+
+This ensures that the backend cannot be accessed directly from the internet.
+
+
+Database (SQLite)
+
+The project uses SQLite for data persistence.
+
+Database file location:
 /var/www/ai_project/ai.db
 
+SQLite was chosen because it is lightweight, serverless and suitable for a single-instance deployment.
 
-SQLite is used because it is lightweight, serverless and perfectly suitable for a small single-instance application.
+The database is created automatically if it does not exist.
 
-Schema
 
-The database initializes itself when the backend starts for the first time.
-The table structure is:
+Database schema
+
+The backend initializes the database with the following table:
 
 CREATE TABLE IF NOT EXISTS analysis (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    text TEXT NOT NULL,
-    summary TEXT,
-    sentiment TEXT,
-    sentiment_score REAL,
-    keywords TEXT,
-    created_at TEXT
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  text TEXT NOT NULL,
+  summary TEXT,
+  sentiment TEXT,
+  sentiment_score REAL,
+  keywords TEXT,
+  created_at TEXT
 );
+
 
 How the backend uses the database
 
-The POST request /api/analyze receives JSON input:
+Each API request stores a record containing:
+The original input text
+The generated summary
+The sentiment label and score
+Extracted keywords
+A timestamp
 
-{ "text": "..." }
+The database allows basic inspection and validation of backend behavior.
 
 
-The backend runs its analysis:
+Security notes
 
-sentiment via VADER
+The security configuration is intentionally kept simple to maintain clarity and reproducibility.
 
-keyword extraction
+SSH access is restricted to a single public IP address using Hetzner firewall rules.
 
-summary
-
-The result is stored as a new entry in the analysis table.
-
-The API returns the full dataset back to the frontend, including the generated fields and timestamp.
-
-Checking stored results
-
-On the EC2 instance:
-
-sqlite3 /var/www/ai_project/ai.db "SELECT * FROM analysis;"
-
-Why SQLite for this project
-
-It keeps the setup simple and reproducible. No additional services are required (no MySQL/PostgreSQL), and the entire environment can be recreated from scratch instantly by running Terraform + Ansible again.
-For a larger or multi-instance deployment, the backend could easily be adapted to use RDS or another external database.
-
-Security Notes
-
-The security configuration is intentionally kept minimal so the project can remain easy to rebuild and test:
-
-Port 80 is open publicly for easier access during testing.
-
-The backend listens only on localhost and is not directly exposed.
+The backend is not exposed publicly and is accessible only through Nginx.
 
 No sensitive data is processed.
 
-For a production environment, HTTPS termination, stricter security groups and more advanced hardening would be required.
-Here, the priority is simplicity and clarity of the workflow.
+HTTPS is not enabled because the project uses a raw IP address without a domain name.
 
-Future Work
 
-Planned improvements:
+Future improvements
 
-enhance the backend logic and error handling
+Possible future extensions include:
+Enabling HTTPS once a domain is available
+Improving backend error handling
+Enhancing frontend visualization
+Containerizing the backend
+Migrating the database to a managed service
+Adding CI/CD automation
 
-polish the frontend UI
-
-add visualization for stored analyses
-
-enable HTTPS once a domain is available
-
-containerize the backend or run it behind a load balancer
-
-optionally migrate the database to RDS
 
 Author
 
 Presiyan Rusinov
-DevOps | Linux | Terraform | Ansible | AWS
-rusinovpresian@gmail.com
+DevOps / Linux / Terraform / Ansible
+Email: rusinovpresian@gmail.com
 
 GitHub repository:
 https://github.com/presianrusinov/ansible-nginx-hardening
