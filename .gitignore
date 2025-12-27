@@ -17,3 +17,8 @@ roles/backend/files/__pycache__/
 **/*.tfstate.*
 **/crash.log
 **/crash.*.log
+
+# Private interview notes (do not commit)
+interview-notes-bg.md
+interview-notes-en.md
+
