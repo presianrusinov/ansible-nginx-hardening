@@ -1,11 +1,21 @@
 ---
-- name: Configure and deploy AI + DevOps app on AWS EC2
+- name: Configure and deploy AI + DevOps app on Hetzner VM
   hosts: hetzner_nginx
   become: yes
 
   roles:
+    # 1. OS / Web layer
     - nginx_hardening
+
+    # 2. Application deployment (creates ai-backend.service)
     - backend
+
+    # 3. systemd security & reliability hardening (DROP-IN)
+    - systemd_hardening_ai_backend
+
+    # 4. Reverse proxy → backend
     - reverse_proxy
+
+    # 5. Frontend (static files / SPA)
     - frontend
 
