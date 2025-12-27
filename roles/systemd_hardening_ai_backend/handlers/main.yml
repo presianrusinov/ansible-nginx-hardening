@@ -1,0 +1,10 @@
+---
+- name: systemd daemon-reload
+  ansible.builtin.systemd:
+    daemon_reload: true
+
+- name: restart ai-backend
+  ansible.builtin.systemd:
+    name: ai-backend
+    state: restarted
+
