@@ -42,7 +42,11 @@ Nginx serves static frontend files over HTTP on port 80.
 
 Nginx also acts as a reverse proxy for backend API requests under /api/.
 
-The backend is a small Flask application running as a systemd service and listening only on localhost.
+The backend is served using Gunicorn instead of the Flask development server.
+
+Gunicorn was chosen to provide a production-grade WSGI server with proper process management, improved reliability and better integration with systemd.
+
+The backend service is hardened using multiple systemd security directives and validated using systemd-analyze security.
 
 The backend persists results in a local SQLite database.
 
@@ -166,6 +170,7 @@ Enhancing frontend visualization
 Containerizing the backend
 Migrating the database to a managed service
 Adding CI/CD automation
+Adding monitoring and alerting for the backend service
 
 
 Author
