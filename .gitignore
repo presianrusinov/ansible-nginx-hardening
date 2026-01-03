@@ -17,3 +17,7 @@ roles/backend/files/__pycache__/
 **/*.tfstate.*
 **/crash.log
 **/crash.*.log
+
+
+interview-notes-en.md
+interview-notes-bg.md
