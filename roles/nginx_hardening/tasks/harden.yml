@@ -2,44 +2,49 @@
 # Hardening tasks for Nginx
 
 - name: Disable server_tokens
-  lineinfile:
+  ansible.builtin.lineinfile:
     path: /etc/nginx/nginx.conf
     regexp: '^\s*server_tokens'
     line: '    server_tokens off;'
     insertafter: 'http {'
   notify: restart nginx
+  become: true
 
 - name: Set correct ownership for Nginx directories
-  file:
+  ansible.builtin.file:
     path: /usr/share/nginx
     owner: root
     group: root
-    recurse: yes
+    recurse: true
+  become: true
 
 - name: Secure nginx.conf permissions
-  file:
+  ansible.builtin.file:
     path: /etc/nginx/nginx.conf
     owner: root
     group: root
-    mode: '0644'
+    mode: "0644"
+  become: true
 
 - name: Secure website root directory
-  file:
+  ansible.builtin.file:
     path: /usr/share/nginx/html
     owner: root
     group: root
-    mode: '0755'
+    mode: "0755"
+  become: true
 
 - name: Create SSL directory
-  file:
+  ansible.builtin.file:
     path: /etc/nginx/ssl
     state: directory
     owner: root
     group: root
-    mode: '0700'
+    mode: "0700"
+  become: true
 
 - name: Generate self-signed SSL certificate
-  command: >
+  ansible.builtin.command: >
     openssl req -x509 -nodes -days 365
     -newkey rsa:2048
     -keyout /etc/nginx/ssl/selfsigned.key
@@ -48,9 +53,11 @@
   args:
     creates: /etc/nginx/ssl/selfsigned.crt
   notify: restart nginx
+  become: true
 
+# Optional default site management (disabled by default via defaults/main.yml)
 - name: Ensure default site configuration file exists
-  copy:
+  ansible.builtin.copy:
     dest: /etc/nginx/conf.d/default.conf
     content: |
       server {
@@ -66,10 +73,12 @@
               try_files $uri $uri/ =404;
           }
       }
+  when: nginx_manage_default_site | bool
   notify: restart nginx
+  become: true
 
 - name: Configure SSL in default site
-  blockinfile:
+  ansible.builtin.blockinfile:
     path: /etc/nginx/conf.d/default.conf
     insertafter: EOF
     block: |
@@ -87,13 +96,18 @@
               try_files $uri $uri/ =404;
           }
       }
+  when: nginx_manage_default_site | bool
   notify: restart nginx
+  become: true
 
 - name: Fix SELinux context for Nginx web root
-  command: chcon -R -t httpd_sys_content_t /usr/share/nginx/html
+  ansible.builtin.command: chcon -R -t httpd_sys_content_t /usr/share/nginx/html
+  changed_when: false
+  become: true
 
+# Optional: do NOT overwrite frontend by default
 - name: Deploy simple HTML test page
-  copy:
+  ansible.builtin.copy:
     dest: /usr/share/nginx/html/index.html
     content: |
       <html>
@@ -107,18 +121,32 @@
         </style>
       </head>
       <body>
-        <h1>Nginx is running on AWS EC2 (Amazon Linux 2023)</h1>
-        <p>This page is automatically deployed via Ansible + Terraform.</p>
+        <h1>Nginx is running</h1>
+        <p>This page is optionally deployed via Ansible.</p>
       </body>
       </html>
     owner: root
     group: root
-    mode: '0644'
+    mode: "0644"
+  when: nginx_deploy_test_page | bool
+  become: true
+
+# Replace root path only in files that exist (no default.conf hardcoding)
+- name: Find Nginx conf.d files
+  ansible.builtin.find:
+    paths: /etc/nginx/conf.d
+    patterns: "*.conf"
+    file_type: file
+  register: nginx_confd_files
+  become: true
 
 - name: Ensure correct root path in Nginx conf.d files
-  replace:
-    path: "/etc/nginx/conf.d/default.conf"
+  ansible.builtin.replace:
+    path: "{{ item.path }}"
     regexp: "/var/www/html"
     replace: "/usr/share/nginx/html"
+  loop: "{{ nginx_confd_files.files }}"
+  when: nginx_confd_files.matched | int > 0
   notify: restart nginx
+  become: true
 

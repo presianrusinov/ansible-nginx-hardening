@@ -1,5 +1,9 @@
----
 - name: Reload systemd
   ansible.builtin.systemd:
     daemon_reload: true
-  become: true
+
+- name: Restart ai-backend
+  ansible.builtin.systemd:
+    name: ai-backend
+    state: restarted
+

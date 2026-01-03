@@ -3,11 +3,17 @@ Description=AI Backend Flask Service
 After=network.target
 
 [Service]
-User={{ backend_service_user }}
+User=ansible
 WorkingDirectory=/var/www/ai_project
 Environment="NLTK_DATA=/usr/local/share/nltk_data"
-ExecStart=/usr/bin/python3 /var/www/ai_project/app.py
-Restart=always
+
+# Use absolute path (deterministic, no PATH/env expansion issues)
+ExecStart=/usr/local/bin/gunicorn --workers 3 --bind 127.0.0.1:5000 --timeout 60 --access-logfile - --error-logfile - app:app
+
+Restart=on-failure
+RestartSec=2s
+TimeoutStartSec=30s
+TimeoutStopSec=20s
 
 [Install]
 WantedBy=multi-user.target

@@ -1,0 +1,9 @@
+# nginx_hardening defaults
+
+# Whether to manage /etc/nginx/conf.d/default.conf
+nginx_manage_default_site: false
+
+# Whether to deploy a simple test index.html page
+nginx_deploy_test_page: false
+
+
