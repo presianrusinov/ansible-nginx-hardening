@@ -1,0 +1,15 @@
+[Unit]
+Description=Blackbox Exporter
+After=network-online.target
+
+[Container]
+Image=quay.io/prometheus/blackbox-exporter:latest
+Network=host
+Volume=/opt/observability/blackbox/blackbox.yml:/etc/blackbox_exporter/config.yml:ro
+Exec=--config.file=/etc/blackbox_exporter/config.yml --web.listen-address=127.0.0.1:9115
+
+[Service]
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

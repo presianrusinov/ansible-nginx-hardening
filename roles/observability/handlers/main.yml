@@ -1,0 +1,16 @@
+---
+- name: Observability | systemd daemon-reload
+  ansible.builtin.command: systemctl daemon-reload
+
+- name: Observability | restart observability units
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    state: restarted
+  loop:
+    - podman-node-exporter.service
+    - podman-blackbox-exporter.service
+    - podman-loki.service
+    - podman-promtail.service
+    - podman-prometheus.service
+    - podman-grafana.service
+  ignore_errors: true

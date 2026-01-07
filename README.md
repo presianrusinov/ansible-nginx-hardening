@@ -1,186 +1,129 @@
-# AI Text Analyzer – Terraform and Ansible deployment on Hetzner Cloud
+AI Text Analyzer – Production-like single-node DevOps stack using Terraform and Ansible
 
-Live demo:
+Live demo
 http://46.224.191.124
 
-Repository:
+Repository
 https://github.com/presianrusinov/ansible-nginx-hardening
-
 
 Overview
 
-This project demonstrates a complete end-to-end DevOps workflow for provisioning, configuring and deploying a small web application in the cloud using Infrastructure as Code and configuration management.
+This project shows a complete, reproducible DevOps workflow for provisioning and configuring a production-style application stack on a single virtual machine. Everything can be rebuilt from scratch in a predictable way using infrastructure as code and configuration management.
 
-The environment is fully reproducible. A single command sequence can provision the server, configure the operating system, deploy the application stack and make it available publicly.
+Terraform is used to provision the infrastructure and firewall rules on Hetzner Cloud.
+Ansible handles operating system configuration and application deployment on Rocky Linux 9.
+Nginx serves the frontend and acts as a reverse proxy for the backend API.
+Prometheus and exporters are included to provide real host metrics and basic observability.
 
-The project focuses on realistic DevOps practices rather than production-grade complexity.
+The main goal of the project is to be realistic rather than over-engineered, and to demonstrate how a small but properly structured DevOps setup can look in practice.
 
+Why Hetzner Cloud
 
-Why Hetzner Cloud (migration from AWS)
+The project was originally deployed on AWS EC2 and later migrated to Hetzner Cloud. The main reason for the migration was cost optimization and more predictable monthly pricing, while keeping exactly the same approach to infrastructure and configuration management.
 
-The project was initially deployed on AWS EC2. It was later migrated to Hetzner Cloud for cost optimization and predictable monthly expenses while preserving the same technical workflow and deployment logic.
+Terraform is still responsible for provisioning infrastructure.
+Ansible is still responsible for configuring the system and deploying the application.
 
-The migration did not change the architecture or tooling philosophy:
-Terraform is still responsible for infrastructure provisioning.
-Ansible is still responsible for configuration and application deployment.
-
-The current live demo runs on Hetzner Cloud, while the AWS implementation is kept as a historical reference in the project’s evolution.
-
-
-Operating system and environment
-
-The server runs Rocky Linux 9, chosen to stay close to a Red Hat Enterprise Linux-like environment with systemd and SELinux enabled.
-
-A dedicated ansible user is used for configuration management with passwordless sudo access.
-
+The AWS version is kept in the repository as a historical reference.
 
 High-level architecture
 
-The application runs entirely on a single virtual machine.
+The entire application runs on a single virtual machine.
 
-Nginx serves static frontend files over HTTP on port 80.
+The frontend consists of static HTML, CSS and JavaScript files served by Nginx on port 80.
 
-Nginx also acts as a reverse proxy for backend API requests under /api/.
+The backend is a Flask application served by Gunicorn and managed as a systemd service called ai-backend.service. It listens only on 127.0.0.1:5000 and is not exposed publicly. The main API endpoint is POST /api/analyze.
 
-The backend is served using Gunicorn instead of the Flask development server.
+Nginx acts as a reverse proxy and forwards all requests under /api/ to the backend running on localhost.
 
-Gunicorn was chosen to provide a production-grade WSGI server with proper process management, improved reliability and better integration with systemd.
+The database is a local SQLite file located at /var/www/ai_project/ai.db.
 
-The backend service is hardened using multiple systemd security directives and validated using systemd-analyze security.
+Observability services are bound to localhost only. Prometheus runs on 127.0.0.1:9090, node_exporter on 127.0.0.1:9100, blackbox_exporter on 127.0.0.1:9115. Grafana on 127.0.0.1:3000 and Loki with Promtail can be enabled optionally.
 
-The backend persists results in a local SQLite database.
+Monitoring endpoints are intentionally not exposed to the public network.
 
-The backend is not exposed publicly and can only be accessed through Nginx.
+Infrastructure provisioning with Terraform
 
+Terraform provisions a Rocky Linux virtual machine on Hetzner Cloud.
+Firewall rules allow inbound HTTP traffic on port 80.
+SSH access is restricted to a single trusted public IP using Hetzner firewall rules.
 
-Infrastructure provisioning (Terraform)
+The Hetzner API token is provided through an environment variable and is not stored anywhere in the repository.
 
-Terraform is used to provision the infrastructure on Hetzner Cloud.
+Configuration management and deployment with Ansible
 
-The Terraform layer creates:
-A virtual machine using a Rocky Linux image
-Firewall rules allowing HTTP access
-Firewall rules restricting SSH access to a single public IP address
+Ansible performs the full server setup and application deployment.
 
-The Hetzner API token is provided through an environment variable and is not stored in the repository.
+This includes installing and hardening Nginx, setting up the Python runtime and dependencies, deploying the backend application and configuring it as a systemd service using Gunicorn, deploying the frontend files to /usr/share/nginx/html, configuring the Nginx reverse proxy, and deploying the observability stack using Podman Quadlet units for Prometheus and exporters.
 
-After provisioning, Terraform outputs the public IP address which is then used by Ansible.
+Verification and health checks
 
+Application checks
 
-Configuration management and deployment (Ansible)
+Public entrypoint through Nginx
+curl -I http://46.224.191.124
 
-Ansible connects to the server using the ansible user and performs the full configuration.
+Backend service status on the VM
+systemctl status ai-backend --no-pager
 
-Ansible installs and configures:
-Nginx
-Python 3 and required dependencies
-The backend application
-A systemd service for the backend
-The static frontend files
-The Nginx reverse proxy configuration
+Verify that the backend listens only on localhost
+ss -lntp | grep 127.0.0.1:5000 || true
 
-When the playbook completes, the application is immediately available.
+Observability and metrics
 
+Raw node_exporter metrics on the VM
+curl -s http://127.0.0.1:9100/metrics
+ | head
 
-Frontend
+Prometheus readiness check
+curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:9090/-/ready
 
-The frontend consists of static HTML, CSS and JavaScript files.
+Example Prometheus API queries
+curl -s "http://127.0.0.1:9090/api/v1/query?query=up
+"
+curl -s "http://127.0.0.1:9090/api/v1/query?query=node_load1
+"
+curl -s "http://127.0.0.1:9090/api/v1/query?query=node_memory_MemAvailable_bytes
+"
+curl -s "http://127.0.0.1:9090/api/v1/query?query=rate(node_cpu_seconds_total[1m
+])"
 
-The files are deployed to:
-/usr/share/nginx/html
+Security verification for monitoring endpoints
 
-The frontend communicates with the backend using HTTP requests to:
-/api/
+Confirm that monitoring services are bound to localhost only
+ss -lntp | egrep "127.0.0.1:(9090|3000|3100|9100|9115)" || true
 
+Database
 
-Backend
-
-The backend is a Flask application that performs basic text analysis.
-
-It provides an API endpoint:
-POST /api/analyze
-
-The backend runs as a systemd service named:
-ai-backend.service
-
-It listens only on:
-127.0.0.1:5000
-
-This ensures that the backend cannot be accessed directly from the internet.
-
-
-Database (SQLite)
-
-The project uses SQLite for data persistence.
-
-Database file location:
+The SQLite database file is located at
 /var/www/ai_project/ai.db
 
-SQLite was chosen because it is lightweight, serverless and suitable for a single-instance deployment.
-
-The database is created automatically if it does not exist.
-
-
-Database schema
-
-The backend initializes the database with the following table:
+Schema
 
 CREATE TABLE IF NOT EXISTS analysis (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  text TEXT NOT NULL,
-  summary TEXT,
-  sentiment TEXT,
-  sentiment_score REAL,
-  keywords TEXT,
-  created_at TEXT
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+text TEXT NOT NULL,
+summary TEXT,
+sentiment TEXT,
+sentiment_score REAL,
+keywords TEXT,
+created_at TEXT
 );
-
-
-How the backend uses the database
-
-Each API request stores a record containing:
-The original input text
-The generated summary
-The sentiment label and score
-Extracted keywords
-A timestamp
-
-The database allows basic inspection and validation of backend behavior.
-
-
-Security notes
-
-The security configuration is intentionally kept simple to maintain clarity and reproducibility.
-
-SSH access is restricted to a single public IP address using Hetzner firewall rules.
-
-The backend is not exposed publicly and is accessible only through Nginx.
-
-No sensitive data is processed.
-
-HTTPS is not enabled because the project uses a raw IP address without a domain name.
-
 
 Future improvements
 
-Possible future extensions include:
-Enabling HTTPS once a domain is available
-Improving backend error handling
-Enhancing frontend visualization
-Containerizing the backend
-Migrating the database to a managed service
-Adding CI/CD automation
-Adding monitoring and alerting for the backend service
-
+Add HTTPS with a real domain and TLS certificates.
+Add a simple CI/CD pipeline for linting, testing and deployment.
+Protect Grafana and Prometheus with basic authentication and reverse proxy access for demo use.
+Expose backend application metrics using a Prometheus client and a /metrics endpoint.
+Add alerting rules in Prometheus.
 
 Author
 
 Presiyan Rusinov
-DevOps / Linux / Terraform / Ansible
-
+DevOps, Linux, Terraform, Ansible
 Email: rusinovpresian@gmail.com
 
-GitHub repository:
-https://github.com/presianrusinov/ansible-nginx-hardening
+License
 
-License: MIT
+MIT License

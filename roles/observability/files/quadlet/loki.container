@@ -1,0 +1,15 @@
+[Unit]
+Description=Loki
+After=network-online.target
+
+[Container]
+Image=docker.io/grafana/loki:latest
+Network=host
+Volume=/opt/observability/loki/loki-config.yml:/etc/loki/config.yml:ro
+Exec=-config.file=/etc/loki/config.yml -server.http-listen-address=127.0.0.1 -server.http-listen-port=3100
+
+[Service]
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

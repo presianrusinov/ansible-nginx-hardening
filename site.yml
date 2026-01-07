@@ -4,6 +4,7 @@
   become: yes
 
   roles:
+    - observability
     # 1. OS / Web layer
     - nginx_hardening
 

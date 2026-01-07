@@ -1,0 +1,83 @@
+---
+- name: Observability | ensure packages
+  ansible.builtin.dnf:
+    name:
+      - podman
+      - podman-plugins
+      - httpd-tools
+    state: present
+
+- name: Observability | detect firewalld unit
+  ansible.builtin.stat:
+    path: /usr/lib/systemd/system/firewalld.service
+  register: firewalld_unit
+
+- name: Observability | ensure firewalld enabled (if present)
+  ansible.builtin.service:
+    name: firewalld
+    state: started
+    enabled: true
+  when: firewalld_unit.stat.exists
+
+- name: Observability | ensure dirs
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  loop:
+    - /opt/observability
+    - /opt/observability/prometheus
+    - /opt/observability/loki
+    - /opt/observability/promtail
+    - /opt/observability/blackbox
+    - /etc/containers/systemd
+
+- name: Observability | render configs
+  ansible.builtin.template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop:
+    - { src: "prometheus.yml.j2", dest: "/opt/observability/prometheus/prometheus.yml" }
+    - { src: "blackbox.yml.j2", dest: "/opt/observability/blackbox/blackbox.yml" }
+    - { src: "loki-config.yml.j2", dest: "/opt/observability/loki/loki-config.yml" }
+    - { src: "promtail-config.yml.j2", dest: "/opt/observability/promtail/promtail-config.yml" }
+
+- name: Observability | install quadlet units
+  ansible.builtin.copy:
+    src: "quadlet/{{ item }}"
+    dest: "/etc/containers/systemd/{{ item }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop:
+    - prometheus.container
+    - grafana.container
+    - loki.container
+    - promtail.container
+    - node-exporter.container
+    - blackbox-exporter.container
+  notify:
+    - Observability | systemd daemon-reload
+    - Observability | restart observability units
+
+- name: Observability | flush handlers so systemd generates podman-*.service
+  ansible.builtin.meta: flush_handlers
+
+- name: Observability | enable & start quadlet-generated services
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    state: started
+    enabled: true
+  loop:
+    - podman-node-exporter.service
+    - podman-blackbox-exporter.service
+    - podman-loki.service
+    - podman-promtail.service
+    - podman-prometheus.service
+    - podman-grafana.service
+  when: not ansible_check_mode

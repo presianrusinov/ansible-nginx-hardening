@@ -1,0 +1,14 @@
+[Unit]
+Description=Node Exporter
+After=network-online.target
+
+[Container]
+Image=quay.io/prometheus/node-exporter:latest
+Network=host
+Exec=--web.listen-address=127.0.0.1:9100
+
+[Service]
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
